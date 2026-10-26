@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {generateLevel,hint,commitRotation,releaseStatus,neighbors,undo,stars,wrap,daySeed} from '../src/puzzle.js';
+function solve(p){let guard=0;while(!p.complete&&guard++<30){const h=hint(p);assert.ok(h,'every remaining puzzle has a loose end');assert.ok(commitRotation(p,h.id,h.angle).removed);}assert.ok(p.complete);assert.equal(p.moves,p.rings.length);}
+test('every authored level can be cleared without hints or wasted moves',()=>{for(let i=0;i<24;i++){const p=generateLevel(i);assert.equal(p.edges.length,p.rings.length-1);solve(p);assert.equal(stars(p),3);}});
+test('500 daily seeds remain connected and solvable',()=>{for(let seed=20261025;seed<20261525;seed++){solve(generateLevel(17,seed));}});
+test('a linked middle ring cannot escape through one opening',()=>{const p=generateLevel(1),middle=p.rings.find(r=>neighbors(p,r.id).length===2);for(let i=0;i<72;i++)assert.equal(releaseStatus(p,middle.id,i*Math.PI/36).ready,false);});
+test('a leaf releases only when its gap faces its neighbor',()=>{const p=generateLevel(0),h=hint(p);assert.equal(releaseStatus(p,h.id,h.angle+Math.PI).ready,false);assert.equal(releaseStatus(p,h.id,h.angle).ready,true);assert.equal(commitRotation(p,h.id,h.angle+Math.PI).removed,false);assert.equal(commitRotation(p,h.id,h.angle).removed,true);});
+test('undo restores removed rings and angles without erasing move costs',()=>{const p=generateLevel(4),h=hint(p),original=p.rings[h.id].angle;commitRotation(p,h.id,h.angle);assert.equal(p.rings[h.id].active,false);assert.ok(undo(p));assert.equal(p.rings[h.id].active,true);assert.equal(p.rings[h.id].angle,original);assert.equal(p.moves,2);assert.equal(p.complete,false);});
+test('daily puzzles use the UTC calendar date and deterministic layouts',()=>{assert.equal(daySeed(new Date('2026-10-25T23:59:59Z')).key,'2026-10-25');assert.deepEqual(generateLevel(17,20261025),generateLevel(17,20261025));assert.ok(Math.abs(wrap(Math.PI*20))<1e-10);});
